@@ -1,0 +1,4 @@
+project_id = "cinepick"
+
+[functions.tmdb-proxy]
+verify_jwt = false

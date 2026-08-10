@@ -57,7 +57,7 @@ Cinepick is a responsive movie and TV discovery platform built as a portfolio pr
 
 ## Architecture
 
-TMDB communication and response normalization are isolated in a service layer. TanStack Query handles remote caching and request lifecycle state, while React context providers manage authentication and personal media state.
+TMDB communication is routed through a Supabase Edge Function. The browser sends only an allowlisted TMDB path to the function; the function applies origin checks and per-client rate limits before adding the server-side TMDB credential. Response normalization remains isolated in the frontend service layer. TanStack Query handles remote caching and request lifecycle state, while React context providers manage authentication and personal media state.
 
 Guest activity is stored in the browser. After authentication, user collections and progress are synchronized with Supabase. Database ownership policies are enforced independently of the client, ensuring that each account can access only its own records.
 
@@ -67,10 +67,35 @@ The recommendation workflow retrieves live candidates from TMDB, scores them aga
 
 - Per-user database access enforced through Row Level Security
 - Publishable client credentials separated from privileged database access
+- TMDB credentials stored only as Supabase Edge Function secrets, never in the Vite bundle
+- Allowlisted TMDB proxy routes with durable per-client minute and daily rate limits
 - Runtime loading, error, empty, and unavailable-image states
 - Strict TypeScript checks during production builds
 - Automated recommendation-engine tests before deployment
 - SPA route fallback for direct links and refreshed GitHub Pages routes
+
+## Secure TMDB deployment
+
+The frontend `.env` contains only the Supabase URL and publishable key shown in `.env.example`. Never add a TMDB credential to a variable prefixed with `VITE_`; Vite replaces those variables in public JavaScript at build time.
+
+If a TMDB key has already appeared in a deployed bundle, revoke or regenerate it in TMDB before deploying this change. Store the replacement key and the backend deployment credentials as these GitHub Actions repository secrets:
+
+- `TMDB_API_KEY` — the replacement TMDB v3 API key
+- `RATE_LIMIT_SALT` — a long, randomly generated value used to hash client identifiers
+- `SUPABASE_ACCESS_TOKEN` — a Supabase personal access token for the CLI
+- `SUPABASE_DB_PASSWORD` — the linked project's database password
+- `SUPABASE_PROJECT_ID` — the project's reference ID
+- `VITE_SUPABASE_URL` — the public project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — the public browser key
+
+The deployment workflow applies the rate-limit migration, stores the server-only function secrets, deploys `tmdb-proxy`, and only then builds and publishes the static site. For a manual deployment, copy `supabase/.env.example` to the ignored `supabase/.env`, fill it locally, and run:
+
+```sh
+supabase link --project-ref your-project-ref
+supabase db push
+supabase secrets set --env-file supabase/.env --project-ref your-project-ref
+supabase functions deploy tmdb-proxy --project-ref your-project-ref
+```
 
 ## What this project demonstrates
 

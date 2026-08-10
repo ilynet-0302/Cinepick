@@ -2,9 +2,8 @@ import { genreIds, genreNames } from '../data/genres';
 import { rankRecommendations, type PickCriteria } from '../features/picker/recommendationEngine';
 import type { MediaType, Movie, Person } from '../types';
 import { parseMediaKey } from '../utils/mediaKey';
+import { isSupabaseConfigured, supabase } from './supabase';
 
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY as string | undefined;
-const API_URL = 'https://api.themoviedb.org/3';
 const image = (path: string | null | undefined, size = 'w780') => path ? `https://image.tmdb.org/t/p/${size}${path}` : '';
 
 type TmdbMovie = {
@@ -47,15 +46,17 @@ const normalize = (item: TmdbMovie, forcedType?: MediaType): Movie => ({
 });
 
 async function request(path: string) {
-  if (!API_KEY) throw new Error('Add VITE_TMDB_API_KEY to .env and restart the development server.');
-  const separator = path.includes('?') ? '&' : '?';
-  const response = await fetch(`${API_URL}${path}${separator}api_key=${API_KEY}`);
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('TMDB title not found.');
-    if (response.status === 429) throw new Error('TMDB rate limit reached. Please try again shortly.');
+  const client = supabase;
+  if (!client) throw new Error('Configure Supabase to load TMDB data.');
+
+  const { data, error } = await client.functions.invoke('tmdb-proxy', { body: { path } });
+  if (error) {
+    const status = (error as { context?: { status?: number } }).context?.status;
+    if (status === 404) throw new Error('TMDB title not found.');
+    if (status === 429) throw new Error('Too many requests. Please try again shortly.');
     throw new Error('Could not reach TMDB.');
   }
-  return response.json();
+  return data;
 }
 
 const normalizeResults = (data: { results?: TmdbMovie[] }, forcedType?: MediaType) =>
@@ -188,4 +189,4 @@ export async function getMoviePicks(criteria: PickCriteria): Promise<Movie[]> {
   return rankRecommendations(unique, criteria);
 }
 
-export const tmdbEnabled = Boolean(API_KEY);
+export const tmdbEnabled = isSupabaseConfigured;
