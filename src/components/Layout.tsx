@@ -29,6 +29,19 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('cinepick-theme', theme); }, [theme]);
   useEffect(() => setMobileOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileOpen]);
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,7 +49,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   };
 
   return <div className="app-shell">
-    <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
+    <aside id="mobile-navigation" className={`sidebar ${mobileOpen ? 'open' : ''}`}>
       <div className="sidebar-head"><Logo /><button className="icon-btn mobile-only" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={20} /></button></div>
       <nav className="main-nav" aria-label="Main navigation">
         {nav.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}><Icon size={19} /><span>{label}</span></NavLink>)}
@@ -45,15 +58,17 @@ export default function Layout({ children }: { children: ReactNode }) {
         <NavLink to={auth.user ? '/profile' : '/auth'} className="mini-profile"><span className="avatar">{initials}</span><span><b>{accountName}</b><small>{auth.user ? `${library.watched.length} watched · synced` : 'Sign in to sync'}</small></span></NavLink>
       </div>
     </aside>
+    <button className={`sidebar-scrim ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" tabIndex={mobileOpen ? 0 : -1} />
     <div className="page-column">
       <header className="topbar">
-        <button className="icon-btn menu-trigger" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
+        <button className="icon-btn menu-trigger" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="mobile-navigation"><Menu size={20} /></button>
         <div className="mobile-logo"><Logo /></div>
         <form className="search-box" onSubmit={submitSearch}>
           <Search size={18} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search movies, shows, people…" aria-label="Search" />
           <kbd>⌘ K</kbd>
         </form>
+        <button className="icon-btn mobile-search-btn" onClick={() => navigate('/search')} aria-label="Open search"><Search size={18} /></button>
         <div className="top-actions">
           <button className="icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">{theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}</button>
           <NavLink className="avatar avatar-link" to={auth.user ? '/profile' : '/auth'}>{initials}</NavLink>
