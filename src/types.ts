@@ -1,5 +1,5 @@
-export type MediaType = 'movie' | 'tv';
-export type ListType = 'watchlist' | 'favorite' | 'watched';
+export type MediaType = "movie" | "tv";
+export type ListType = "watchlist" | "favorite" | "watched";
 
 export interface Person {
   id: number;

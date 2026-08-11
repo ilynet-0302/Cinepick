@@ -57,9 +57,9 @@ Cinepick is a responsive movie and TV discovery platform built as a portfolio pr
 
 ## Architecture
 
-TMDB communication is routed through a Supabase Edge Function. The browser sends only an allowlisted TMDB path to the function; the function applies origin checks and per-client rate limits before adding the server-side TMDB credential. Response normalization remains isolated in the frontend service layer. TanStack Query handles remote caching and request lifecycle state, while React context providers manage authentication and personal media state.
+TMDB communication is routed through a Supabase Edge Function. The browser sends only an allowlisted TMDB path to the function; the function applies origin checks and per-client rate limits before adding the server-side TMDB credential. The frontend API layer separates transport, runtime Zod schemas, response mappers, and resource-specific operations. TanStack Query handles remote caching and request lifecycle state, while React context providers manage authentication and personal media state.
 
-Guest activity is stored in the browser. After authentication, user collections and progress are synchronized with Supabase. Database ownership policies are enforced independently of the client, ensuring that each account can access only its own records.
+Guest activity is validated and stored in the browser. After authentication, user collections and progress are synchronized through dedicated Supabase repositories. Database ownership policies are enforced independently of the client, ensuring that each account can access only its own records.
 
 The recommendation workflow retrieves live candidates from TMDB, scores them against the viewer’s answers, excludes previously watched titles, and returns a focused shortlist rather than cycling through a fixed catalog.
 
@@ -70,8 +70,9 @@ The recommendation workflow retrieves live candidates from TMDB, scores them aga
 - TMDB credentials stored only as Supabase Edge Function secrets, never in the Vite bundle
 - Allowlisted TMDB proxy routes with durable per-client minute and daily rate limits
 - Runtime loading, error, empty, and unavailable-image states
+- Runtime validation for TMDB, Supabase, URL, form, and browser-storage boundaries
 - Strict TypeScript checks during production builds
-- Automated recommendation-engine tests before deployment
+- Automated tests for recommendation logic, API schemas, storage state, URL validation, and proxy policy
 - SPA route fallback for direct links and refreshed GitHub Pages routes
 
 ## Secure TMDB deployment
